@@ -86,6 +86,7 @@ def split_by_secondsEx(opt):
     split_length = opt.split_size
     vcodec = opt.vcodec
     acodec = opt.acodec
+    idx = opt.index
     if split_length and split_length <= 0:
         print "Split length can't be 0"
         raise SystemExit
@@ -131,7 +132,7 @@ def split_by_secondsEx(opt):
             split_start = split_length * n
 
         split_str += " -ss "+str(split_start)+" -t "+str(split_length) + \
-                    " \""+filebase + "-" + split_count_max_chars_fmt.format(n) + "." + fileext + \
+                    " \""+filebase + "-" + split_count_max_chars_fmt.format(n+idx) + "." + fileext + \
                     "\""
         print "About to run: "+split_cmd+split_str
         output = subprocess.Popen(split_cmd+split_str, shell = True, stdout =
@@ -219,6 +220,13 @@ def main():
                       default = "copy",
                       action = "store"
                      )
+    parser.add_option("-i", "--index",
+                      dest = "index",
+                      help = "index number from. ",
+                      type = "int",
+                      default = 0,
+                      action = "store"
+                     )                        
     (options, args) = parser.parse_args()
 
     if options.filename and options.manifest:

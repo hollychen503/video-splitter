@@ -81,6 +81,61 @@ def split_by_manifest(filename, manifest, vcodec="copy", acodec="copy",
                 raise SystemExit
 
 
+def split_by_secondsEx(opt):
+    filename = opt.filename
+    split_length = opt.split_size
+    vcodec = opt.vcodec
+    acodec = opt.acodec
+    if split_length and split_length <= 0:
+        print "Split length can't be 0"
+        raise SystemExit
+    if os.name == 'nt':
+        output = subprocess.Popen("ffmpeg -i \""+filename+"\" 2>&1 | findstr \"Duration\"",
+                            shell = True,
+                            stdout = subprocess.PIPE
+                            ).stdout.read()
+    else:
+        output = subprocess.Popen("ffmpeg -i '"+filename+"' 2>&1 | grep 'Duration'",
+                            shell = True,
+                            stdout = subprocess.PIPE
+                            ).stdout.read()
+    print output
+    matches = re_length.search(output)
+    if matches:
+        video_length = int(matches.group(1)) * 3600 + \
+                        int(matches.group(2)) * 60 + \
+                        int(matches.group(3))
+        print "Video length in seconds: "+str(video_length)
+    else:
+        print "Can't determine video length."
+        raise SystemExit
+    split_count = int(math.ceil(video_length/float(split_length)))
+    split_count_max_chars = len(str(split_count))
+    split_count_max_chars_fmt = '{0:0'+str(split_count_max_chars)+'d}'
+    if(split_count == 1):
+        print "Video length is less then the target split length."
+        raise SystemExit
+
+    split_cmd = "ffmpeg -i \"%s\" -vcodec %s -acodec %s " % (filename, vcodec,
+                                                           acodec)
+    try:
+        filebase = ".".join(filename.split(".")[:-1])
+        fileext = filename.split(".")[-1]
+    except IndexError as e:
+        raise IndexError("No . in filename. Error: " + str(e))
+    for n in range(0, split_count):
+        split_str = ""
+        if n == 0:
+            split_start = 0
+        else:
+            split_start = split_length * n
+
+        split_str += " -ss "+str(split_start)+" -t "+str(split_length) + \
+                    " \""+filebase + "-" + split_count_max_chars_fmt.format(n) + "." + fileext + \
+                    "\""
+        print "About to run: "+split_cmd+split_str
+        output = subprocess.Popen(split_cmd+split_str, shell = True, stdout =
+                               subprocess.PIPE).stdout.read()
 
 def split_by_seconds(filename, split_length, vcodec="copy", acodec="copy",
                      **kwargs):
@@ -169,7 +224,9 @@ def main():
     if options.filename and options.manifest:
         split_by_manifest(**(options.__dict__))
     elif options.filename and options.split_size:
-        split_by_seconds(**(options.__dict__))
+        print options
+        #split_by_seconds(**(options.__dict__))
+        split_by_secondsEx(options)
     else:
         parser.print_help()
         raise SystemExit
